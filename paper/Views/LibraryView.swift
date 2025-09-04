@@ -127,7 +127,8 @@ struct LibraryView: View {
                         }
                         if let page = doc.page(at: 0) {
                             let pageRect = page.bounds(for: .mediaBox)
-                            let scale: CGFloat = 2.0
+                            let targetW: CGFloat = 600
+                            let scale = targetW / max(pageRect.width, 1)
                             let size = CGSize(width: pageRect.width * scale, height: pageRect.height * scale)
                             UIGraphicsBeginImageContextWithOptions(size, true, 1.0)
                             if let ctx = UIGraphicsGetCurrentContext() {
@@ -161,7 +162,8 @@ struct LibraryView: View {
                         author = meta.author ?? ""
                         subjects = meta.subjects
                         if let cover = meta.coverData {
-                            coverName = FileStore.saveCover(cover, preferredExt: meta.coverExt)
+                            let data = Thumbnailer.downsample(imageData: cover, maxDimension: 600) ?? cover
+                            coverName = FileStore.saveCover(data, preferredExt: meta.coverExt)
                         }
                     }
                     if title.isEmpty || author.isEmpty {
@@ -216,7 +218,7 @@ struct LibraryView: View {
     }
 }
 
-private struct BookCell: View {
+    private struct BookCell: View {
     @Environment(\.editMode) private var editMode
     let book: Ebook
     var isSelected: Bool
@@ -244,11 +246,28 @@ private struct BookCell: View {
     }
 
     private var cover: Image {
-        if let url = book.coverURL, let data = try? Data(contentsOf: url) {
-            #if canImport(UIKit)
-            if let ui = UIImage(data: data) { return Image(uiImage: ui) }
-            #endif
+        #if canImport(UIKit)
+        if let url = book.coverURL, let img = downsampledImage(url: url, maxDimension: 600) {
+            return Image(uiImage: img)
         }
+        #endif
         return Image(systemName: "book")
     }
+
+    #if canImport(UIKit)
+    private func downsampledImage(url: URL, maxDimension: CGFloat) -> UIImage? {
+        let srcOpts: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, srcOpts as CFDictionary) else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDimension * UIScreen.main.scale,
+            kCGImageSourceCreateThumbnailWithTransform: true
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+    #endif
 }

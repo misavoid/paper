@@ -24,20 +24,15 @@ struct ReaderView: View {
     var body: some View {
         ZStack {
             if let root = rootFolder, !chapters.isEmpty {
-                TabView(selection: $selection) {
-                    ForEach(Array(chapters.enumerated()), id: \.offset) { idx, url in
-                        HTMLFileView(
-                            fileURL: url,
-                            readAccessURL: root,
-                            theme: ReaderTheme(rawValue: readerTheme) ?? .light,
-                            fontScale: readerFontScale,
-                            pageIndex: idx == selection ? $currentPage : .constant(0),
-                            onPageCount: { count in if idx == selection { currentPageCount = max(1, count) } }
-                        )
-                        .tag(idx)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                // Single web view for current chapter to reduce memory
+                HTMLFileView(
+                    fileURL: chapters[selection],
+                    readAccessURL: root,
+                    theme: ReaderTheme(rawValue: readerTheme) ?? .light,
+                    fontScale: readerFontScale,
+                    pageIndex: $currentPage,
+                    onPageCount: { count in currentPageCount = max(1, count) }
+                )
 
                 // Full-screen tap layer to toggle UI
                 Rectangle().fill(Color.clear).contentShape(Rectangle()).ignoresSafeArea().onTapGesture { withAnimation { showUI.toggle() } }
