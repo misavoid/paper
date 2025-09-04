@@ -15,15 +15,7 @@ struct PDFReaderView: View {
             PDFKitView(fileURL: FileStore.ebooksFolderURL.appendingPathComponent(book.fileName), currentIndex: $currentPageIndex, pageCount: $pageCount)
                 .ignoresSafeArea()
                 .onTapGesture { withAnimation { showUI.toggle() } }
-
-            // Drawing overlay (below UI and arrows)
-#if canImport(PencilKit)
-            if isDrawing {
-                PencilCanvasView(drawing: $drawing, isDrawing: true)
-                    .ignoresSafeArea()
-            }
-#endif
-
+            
             // Navigation arrows
             HStack {
                 Button { prev() } label: { Circle().fill(.ultraThinMaterial).frame(width: 44, height: 44).overlay(Image(systemName: "chevron.left")) }

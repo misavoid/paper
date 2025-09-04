@@ -229,25 +229,12 @@ struct ReaderView: View {
     }
 }
 
-#if canImport(PencilKit)
-// MARK: - Drawing persistence (EPUB)
-extension ReaderView {
-    private func saveDrawing() {
-        AnnotationStore.save(drawing: drawing, bookID: book.id, kind: "epub", chapter: selection, page: currentPage)
-    }
-    private func loadDrawing() {
-        if let d = AnnotationStore.load(bookID: book.id, kind: "epub", chapter: selection, page: currentPage) {
-            drawing = d
-        } else {
-            drawing = PKDrawing()
-        }
-    }
-}
-#endif
+// Pencil annotations removed
 
 private struct HTMLFileView: UIViewRepresentable {
     let fileURL: URL
-    let readAccessURL: URL
+    let
+    readAccessURL: URL
     let theme: ReaderTheme
     let fontScale: Double
     @Binding var pageIndex: Int
