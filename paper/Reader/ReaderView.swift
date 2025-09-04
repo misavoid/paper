@@ -1,5 +1,8 @@
 import SwiftUI
 import WebKit
+#if canImport(PencilKit)
+import PencilKit
+#endif
 
 struct ReaderView: View {
     let book: Ebook
@@ -20,6 +23,10 @@ struct ReaderView: View {
     @State private var navMap: [String:String] = [:]
     @State private var basePathRelative: String = ""
     @Environment(\.dismiss) private var dismiss
+    #if canImport(PencilKit)
+    @State private var isDrawing: Bool = false
+    @State private var drawing: PKDrawing = PKDrawing()
+    #endif
 
     var body: some View {
         ZStack {
@@ -62,6 +69,9 @@ struct ReaderView: View {
                             Spacer()
                             Button { showTOC = true } label: { Image(systemName: "list.bullet") }
                             Button { showSettings = true } label: { Image(systemName: "textformat.size") }
+                            #if canImport(PencilKit)
+                            Button { isDrawing.toggle(); if !isDrawing { saveDrawing() } } label: { Image(systemName: isDrawing ? "pencil.tip.crop.circle.fill" : "pencil.tip") }
+                            #endif
                             Button { showInfo = true } label: { Image(systemName: "info.circle") }
                         }
                         .padding()
@@ -95,6 +105,16 @@ struct ReaderView: View {
             } else {
                 ProgressView("Loading…")
             }
+            #if canImport(PencilKit)
+            // Drawing overlay
+            if isDrawing {
+                PencilCanvasView(drawing: $drawing, isDrawing: true)
+                    .ignoresSafeArea()
+                    .onDisappear { saveDrawing() }
+                    .onChange(of: selection) { _, _ in loadDrawing() }
+                    .onChange(of: currentPage) { _, _ in saveDrawing(); loadDrawing() }
+            }
+            #endif
         }
         .onChange(of: selection) { _, _ in
             // reset per-chapter page when chapter changes
@@ -228,6 +248,22 @@ struct ReaderView: View {
         return url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ")
     }
 }
+
+#if canImport(PencilKit)
+// MARK: - Drawing persistence (EPUB)
+extension ReaderView {
+    private func saveDrawing() {
+        AnnotationStore.save(drawing: drawing, bookID: book.id, kind: "epub", chapter: selection, page: currentPage)
+    }
+    private func loadDrawing() {
+        if let d = AnnotationStore.load(bookID: book.id, kind: "epub", chapter: selection, page: currentPage) {
+            drawing = d
+        } else {
+            drawing = PKDrawing()
+        }
+    }
+}
+#endif
 
 private struct HTMLFileView: UIViewRepresentable {
     let fileURL: URL

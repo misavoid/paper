@@ -1,5 +1,8 @@
 import SwiftUI
 import PDFKit
+#if canImport(PencilKit)
+import PencilKit
+#endif
 
 struct PDFReaderView: View {
     let book: Ebook
@@ -8,6 +11,10 @@ struct PDFReaderView: View {
     @State private var showUI: Bool = false
     @State private var pageCount: Int = 1
     @State private var currentPageIndex: Int = 0
+    #if canImport(PencilKit)
+    @State private var isDrawing: Bool = false
+    @State private var drawing: PKDrawing = PKDrawing()
+    #endif
 
     var body: some View {
         ZStack {
@@ -32,6 +39,9 @@ struct PDFReaderView: View {
                         Button { dismiss() } label: { Image(systemName: "house") }
                         Text(book.title).font(.headline)
                         Spacer()
+                        #if canImport(PencilKit)
+                        Button { isDrawing.toggle(); if !isDrawing { saveDrawing() } } label: { Image(systemName: isDrawing ? "pencil.tip.crop.circle.fill" : "pencil.tip") }
+                        #endif
                     }
                     .padding()
                     .background(.ultraThinMaterial)
@@ -48,11 +58,22 @@ struct PDFReaderView: View {
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
+            #if canImport(PencilKit)
+            if isDrawing {
+                PencilCanvasView(drawing: $drawing, isDrawing: true)
+                    .ignoresSafeArea()
+                    .onDisappear { saveDrawing() }
+                    .onChange(of: currentPageIndex) { _, _ in saveDrawing(); loadDrawing() }
+            }
+            #endif
         }
         .onChange(of: currentPageIndex) { _, _ in saveProgress() }
         .task {
             // restore progress
             currentPageIndex = max(0, book.lastReadPage)
+            #if canImport(PencilKit)
+            loadDrawing()
+            #endif
         }
     }
 
@@ -66,6 +87,22 @@ struct PDFReaderView: View {
     private func next() { if currentPageIndex + 1 < pageCount { currentPageIndex += 1 } }
     private func prev() { if currentPageIndex > 0 { currentPageIndex -= 1 } }
 }
+
+#if canImport(PencilKit)
+// MARK: - Drawing persistence (PDF)
+extension PDFReaderView {
+    private func saveDrawing() {
+        AnnotationStore.save(drawing: drawing, bookID: book.id, kind: "pdf", chapter: 0, page: currentPageIndex)
+    }
+    private func loadDrawing() {
+        if let d = AnnotationStore.load(bookID: book.id, kind: "pdf", chapter: 0, page: currentPageIndex) {
+            drawing = d
+        } else {
+            drawing = PKDrawing()
+        }
+    }
+}
+#endif
 
 private struct PDFKitView: UIViewRepresentable {
     let fileURL: URL
@@ -107,4 +144,3 @@ private struct PDFKitView: UIViewRepresentable {
         }
     }
 }
-
