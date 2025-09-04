@@ -1,8 +1,5 @@
 import SwiftUI
 import WebKit
-#if canImport(PencilKit)
-import PencilKit
-#endif
 
 struct ReaderView: View {
     let book: Ebook
@@ -23,10 +20,6 @@ struct ReaderView: View {
     @State private var navMap: [String:String] = [:]
     @State private var basePathRelative: String = ""
     @Environment(\.dismiss) private var dismiss
-    #if canImport(PencilKit)
-    @State private var isDrawing: Bool = false
-    @State private var drawing: PKDrawing = PKDrawing()
-    #endif
 
     var body: some View {
         ZStack {
@@ -46,18 +39,8 @@ struct ReaderView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
-                // Drawing overlay (below arrows and UI)
-                #if canImport(PencilKit)
-                if isDrawing {
-                    PencilCanvasView(drawing: $drawing, isDrawing: true)
-                        .ignoresSafeArea()
-                }
-                #endif
-
-                // Full-screen tap layer to toggle UI (disabled during drawing)
-                if !isDrawing {
-                    Rectangle().fill(Color.clear).contentShape(Rectangle()).ignoresSafeArea().onTapGesture { withAnimation { showUI.toggle() } }
-                }
+                // Full-screen tap layer to toggle UI
+                Rectangle().fill(Color.clear).contentShape(Rectangle()).ignoresSafeArea().onTapGesture { withAnimation { showUI.toggle() } }
 
                 // Always-visible page arrows
                 HStack {
@@ -79,17 +62,6 @@ struct ReaderView: View {
                             Spacer()
                             Button { showTOC = true } label: { Image(systemName: "list.bullet") }
                             Button { showSettings = true } label: { Image(systemName: "textformat.size") }
-                            #if canImport(PencilKit)
-                            Button {
-                                if isDrawing {
-                                    saveDrawing()
-                                    isDrawing = false
-                                } else {
-                                    loadDrawing()
-                                    isDrawing = true
-                                }
-                            } label: { Image(systemName: isDrawing ? "pencil.tip.crop.circle.fill" : "pencil.tip") }
-                            #endif
                             Button { showInfo = true } label: { Image(systemName: "info.circle") }
                         }
                         .padding()
@@ -123,11 +95,6 @@ struct ReaderView: View {
             } else {
                 ProgressView("Loading…")
             }
-            #if canImport(PencilKit)
-            // Keep drawings in sync when chapter/page changes
-            .onChange(of: selection) { _, _ in if isDrawing { saveDrawing() }; loadDrawing() }
-            .onChange(of: currentPage) { _, _ in if isDrawing { saveDrawing() }; loadDrawing() }
-            #endif
         }
         .onChange(of: selection) { _, _ in
             // reset per-chapter page when chapter changes
