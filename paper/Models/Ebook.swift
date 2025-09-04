@@ -8,18 +8,20 @@ final class Ebook {
     var author: String
     var genre: String
     var fileName: String
+    var fileKind: String // "epub" or "pdf"
     var dateAdded: Date
     var coverFileName: String?
     var lastReadIndex: Int
     var lastReadAt: Date?
     var lastReadPage: Int
 
-    init(id: UUID = UUID(), title: String, author: String, genre: String, fileName: String, coverFileName: String? = nil, dateAdded: Date = Date(), lastReadIndex: Int = 0, lastReadAt: Date? = nil, lastReadPage: Int = 0) {
+    init(id: UUID = UUID(), title: String, author: String, genre: String, fileName: String, fileKind: String = "epub", coverFileName: String? = nil, dateAdded: Date = Date(), lastReadIndex: Int = 0, lastReadAt: Date? = nil, lastReadPage: Int = 0) {
         self.id = id
         self.title = title
         self.author = author
         self.genre = genre
         self.fileName = fileName
+        self.fileKind = fileKind
         self.coverFileName = coverFileName
         self.dateAdded = dateAdded
         self.lastReadIndex = lastReadIndex
@@ -46,4 +48,6 @@ extension Ebook {
         guard let name = coverFileName else { return nil }
         return FileStore.coversFolderURL.appendingPathComponent(name)
     }
+
+    var isPDF: Bool { fileKind.lowercased() == "pdf" }
 }

@@ -49,9 +49,7 @@ struct BooksListView: View {
 
     var body: some View {
         List(books) { book in
-            Button {
-                presentedBook = book
-            } label: {
+            Button { presentedBook = book } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(book.title).font(.headline)
                     Text(book.author).font(.subheadline).foregroundStyle(.secondary)
@@ -59,7 +57,9 @@ struct BooksListView: View {
             }
             .buttonStyle(.plain)
         }
-        .fullScreenCover(item: $presentedBook) { ReaderView(book: $0) }
+        .fullScreenCover(item: $presentedBook) { book in
+            if book.isPDF { PDFReaderView(book: book) } else { ReaderView(book: book) }
+        }
         .navigationTitle(title)
     }
 }

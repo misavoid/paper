@@ -53,7 +53,9 @@ struct GenreBooksView: View {
             }
             .buttonStyle(.plain)
         }
-        .fullScreenCover(item: $presentedBook) { ReaderView(book: $0) }
+        .fullScreenCover(item: $presentedBook) { book in
+            if book.isPDF { PDFReaderView(book: book) } else { ReaderView(book: book) }
+        }
         .navigationTitle(genre)
     }
 }

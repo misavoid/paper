@@ -1,4 +1,4 @@
-**Paper — iPad EPUB Library & Reader**
+**Paper — iPad EPUB/PDF Library & Reader**
 
 - **Platform:** iPadOS (also runs on iPhone)
 - **Tech:** SwiftUI, SwiftData, WKWebView
@@ -6,10 +6,10 @@
 
 **Features**
 - **Library:** Grid with covers, search, sort (Recent/Title/Author), multi‑select delete.
-- **Imports:** Plus button imports `.epub` from Files; copies into `Documents/Ebooks/`.
-- **Metadata:** Extracts title/author/subjects and cover (OPF + nav.xhtml where available); filename fallback.
+- **Imports:** Plus button imports `.epub` and `.pdf` from Files; copies into `Documents/Ebooks/`.
+- **Metadata:** EPUB: extracts title/author/subjects and cover (OPF + nav.xhtml where available). PDF: reads document metadata and renders first page thumbnail. Filename fallback.
 - **Collections:** Browse by author or genre (subjects → first subject → genre).
-- **Reader:** Full‑screen, true page‑turn pagination (no scrolling), tap to reveal UI, TOC, themes (Light/Sepia/Dark), font size slider, chapter/page progress, “Continue reading”.
+- **Reader:** EPUB: Full‑screen, true page‑turn pagination (no scrolling), tap to reveal UI, TOC, themes (Light/Sepia/Dark), font size slider, chapter/page progress. PDF: Full‑screen PDFKit reader with page arrows and scrubber. “Continue reading” supported for both.
 - **Storage:** Covers in `Documents/Covers/`. Extracted EPUBs cached in `Library/Caches/ExtractedEPUBs/<book-id>/` and auto‑cleaned on book deletion.
 
 **Requirements**
@@ -65,4 +65,3 @@
 
 **License**
 - Add a license file if you plan to distribute publicly.
-

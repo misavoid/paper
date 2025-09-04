@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+#if canImport(PDFKit)
+import PDFKit
+#endif
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -18,6 +21,7 @@ struct LibraryView: View {
     @State private var presentedBook: Ebook?
 
     private var epubType: UTType { UTType(filenameExtension: "epub") ?? .data }
+    private var pdfType: UTType { .pdf }
 
     var body: some View {
         NavigationStack {
@@ -81,7 +85,7 @@ struct LibraryView: View {
                 }
             }
             .environment(\.editMode, $editMode)
-            .fileImporter(isPresented: $showingImporter, allowedContentTypes: [epubType], allowsMultipleSelection: true) { result in
+            .fileImporter(isPresented: $showingImporter, allowedContentTypes: [epubType, pdfType], allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
                     importBooks(from: urls)
@@ -95,7 +99,13 @@ struct LibraryView: View {
                 Text(importError ?? "Unknown error")
             }
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search")
-            .fullScreenCover(item: $presentedBook) { ReaderView(book: $0) }
+            .fullScreenCover(item: $presentedBook) { book in
+                if book.isPDF {
+                    PDFReaderView(book: book)
+                } else {
+                    ReaderView(book: book)
+                }
+            }
         }
     }
 
@@ -104,26 +114,65 @@ struct LibraryView: View {
             do {
                 let fileName = try FileStore.saveImportedFile(originalURL: url)
                 let localURL = FileStore.ebooksFolderURL.appendingPathComponent(fileName)
-                var title = ""
-                var author = ""
-                var subjects: [String] = []
-                var coverName: String? = nil
-                if let meta = try? EPUBParser().parseMetadata(fromEpubAt: localURL) {
-                    title = meta.title ?? ""
-                    author = meta.author ?? ""
-                    subjects = meta.subjects
-                    if let cover = meta.coverData {
-                        coverName = FileStore.saveCover(cover, preferredExt: meta.coverExt)
+                let ext = localURL.pathExtension.lowercased()
+                if ext == "pdf" {
+                    var title = ""
+                    var author = ""
+                    var coverName: String? = nil
+                    #if canImport(PDFKit)
+                    if let doc = PDFDocument(url: localURL) {
+                        if let attrs = doc.documentAttributes {
+                            if let t = attrs[PDFDocumentAttribute.titleAttribute] as? String { title = t }
+                            if let a = attrs[PDFDocumentAttribute.authorAttribute] as? String { author = a }
+                        }
+                        if let page = doc.page(at: 0) {
+                            let pageRect = page.bounds(for: .mediaBox)
+                            let scale: CGFloat = 2.0
+                            let size = CGSize(width: pageRect.width * scale, height: pageRect.height * scale)
+                            UIGraphicsBeginImageContextWithOptions(size, true, 1.0)
+                            if let ctx = UIGraphicsGetCurrentContext() {
+                                UIColor.white.setFill()
+                                ctx.fill(CGRect(origin: .zero, size: size))
+                                ctx.saveGState()
+                                ctx.translateBy(x: 0, y: size.height)
+                                ctx.scaleBy(x: scale, y: -scale)
+                                page.draw(with: .mediaBox, to: ctx)
+                                ctx.restoreGState()
+                            }
+                            let img = UIGraphicsGetImageFromCurrentImageContext()
+                            UIGraphicsEndImageContext()
+                            if let data = img?.jpegData(compressionQuality: 0.8) { coverName = FileStore.saveCover(data, preferredExt: "jpg") }
+                        }
                     }
+                    #endif
+                    if title.isEmpty {
+                        let guessed = Ebook.guessMetadata(fromFileName: fileName)
+                        title = guessed.title; if author.isEmpty { author = guessed.author }
+                    }
+                    let newBook = Ebook(title: title, author: author, genre: "Unsorted", fileName: fileName, fileKind: "pdf", coverFileName: coverName)
+                    modelContext.insert(newBook)
+                } else {
+                    var title = ""
+                    var author = ""
+                    var subjects: [String] = []
+                    var coverName: String? = nil
+                    if let meta = try? EPUBParser().parseMetadata(fromEpubAt: localURL) {
+                        title = meta.title ?? ""
+                        author = meta.author ?? ""
+                        subjects = meta.subjects
+                        if let cover = meta.coverData {
+                            coverName = FileStore.saveCover(cover, preferredExt: meta.coverExt)
+                        }
+                    }
+                    if title.isEmpty || author.isEmpty {
+                        let guessed = Ebook.guessMetadata(fromFileName: fileName)
+                        if title.isEmpty { title = guessed.title }
+                        if author.isEmpty { author = guessed.author }
+                    }
+                    let genre = subjects.first ?? "Unsorted"
+                    let newBook = Ebook(title: title, author: author, genre: genre, fileName: fileName, fileKind: "epub", coverFileName: coverName)
+                    modelContext.insert(newBook)
                 }
-                if title.isEmpty || author.isEmpty {
-                    let guessed = Ebook.guessMetadata(fromFileName: fileName)
-                    if title.isEmpty { title = guessed.title }
-                    if author.isEmpty { author = guessed.author }
-                }
-                let genre = subjects.first ?? "Unsorted"
-                let newBook = Ebook(title: title, author: author, genre: genre, fileName: fileName, coverFileName: coverName)
-                modelContext.insert(newBook)
             } catch {
                 importError = error.localizedDescription
             }
