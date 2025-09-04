@@ -46,8 +46,18 @@ struct ReaderView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
-                // Full-screen tap layer to toggle UI (below controls)
-                Rectangle().fill(Color.clear).contentShape(Rectangle()).ignoresSafeArea().onTapGesture { withAnimation { showUI.toggle() } }
+                // Drawing overlay (below arrows and UI)
+                #if canImport(PencilKit)
+                if isDrawing {
+                    PencilCanvasView(drawing: $drawing, isDrawing: true)
+                        .ignoresSafeArea()
+                }
+                #endif
+
+                // Full-screen tap layer to toggle UI (disabled during drawing)
+                if !isDrawing {
+                    Rectangle().fill(Color.clear).contentShape(Rectangle()).ignoresSafeArea().onTapGesture { withAnimation { showUI.toggle() } }
+                }
 
                 // Always-visible page arrows
                 HStack {
@@ -70,7 +80,15 @@ struct ReaderView: View {
                             Button { showTOC = true } label: { Image(systemName: "list.bullet") }
                             Button { showSettings = true } label: { Image(systemName: "textformat.size") }
                             #if canImport(PencilKit)
-                            Button { isDrawing.toggle(); if !isDrawing { saveDrawing() } } label: { Image(systemName: isDrawing ? "pencil.tip.crop.circle.fill" : "pencil.tip") }
+                            Button {
+                                if isDrawing {
+                                    saveDrawing()
+                                    isDrawing = false
+                                } else {
+                                    loadDrawing()
+                                    isDrawing = true
+                                }
+                            } label: { Image(systemName: isDrawing ? "pencil.tip.crop.circle.fill" : "pencil.tip") }
                             #endif
                             Button { showInfo = true } label: { Image(systemName: "info.circle") }
                         }
@@ -106,14 +124,9 @@ struct ReaderView: View {
                 ProgressView("Loading…")
             }
             #if canImport(PencilKit)
-            // Drawing overlay
-            if isDrawing {
-                PencilCanvasView(drawing: $drawing, isDrawing: true)
-                    .ignoresSafeArea()
-                    .onDisappear { saveDrawing() }
-                    .onChange(of: selection) { _, _ in loadDrawing() }
-                    .onChange(of: currentPage) { _, _ in saveDrawing(); loadDrawing() }
-            }
+            // Keep drawings in sync when chapter/page changes
+            .onChange(of: selection) { _, _ in if isDrawing { saveDrawing() }; loadDrawing() }
+            .onChange(of: currentPage) { _, _ in if isDrawing { saveDrawing() }; loadDrawing() }
             #endif
         }
         .onChange(of: selection) { _, _ in
